@@ -1,0 +1,109 @@
+#!/bin/sh
+#
+# kumo-gateway  this daemon receives requests from applications and relays it to the kumo-servers.
+#
+# Copyright (C) 2009-2010 FURUHASHI Sadayuki
+#
+# chkconfig: - 99 01
+# description: kumo-gateway this daemon receives requests \
+#              from applications and relays it to the kumo-servers. \
+#              Run this daemon on the hosts that runs applications \
+#              that uses kumofs.
+#
+# processname: /usr/sbin/kumo-gateway
+# config: /etc/sysconfig/kumo-gateway
+# pidfile: /var/run/kumo-gateway.pid
+
+PATH=/sbin:/bin:/usr/bin:/usr/sbin
+
+# Source function library.
+. /etc/init.d/functions
+
+# Get config.
+test -f /etc/sysconfig/network  && . /etc/sysconfig/network
+
+KUMO_GATEWAY_MANAGER_PORT=19700
+KUMO_GATEWAY_MEMPROTO_PORT=11411
+
+test -f /etc/sysconfig/kumo-gateway && . /etc/sysconfig/kumo-gateway
+[ -n "$KUMO_GATEWAY_MANAGER_ADDR" ] && KUMO_GATEWEAY_MANAGER_ADDR=$KUMO_GATEWAY_MANAGER_ADDR
+[ -n "$KUMO_GATEWAY_MANAGER_PORT" ] && KUMO_GATEWAY_MANAGER_PORT=$KUMO_GATEWAY_MANAGER_PORT
+[ -n "$KUMO_GATEWAY_MEMPROTO_MODE" ] && KUMO_GATEWAY_MEMPROTO_MODE=$KUMO_GATEWAY_MEMPROTO_MODE
+[ -n "$KUMO_GATEWAY_MEMPROTO_ADDR" ] && KUMO_GATEWAY_MEMPROTO_ADDR=$KUMO_GATEWAY_MEMPROTO_ADDR
+[ -n "$KUMO_GATEWAY_MEMPROTO_PORT" ] && KUMO_GATEWAY_MEMPROTO_PORT=$KUMO_GATEWAY_MEMPROTO_PORT
+[ -n "$KUMO_GATEWAY_OPTS" ] && KUMO_GATEWAY_OPTS=$KUMO_GATEWAY_OPTS
+
+# Check that networking is up.
+[ "${NETWORKING}" = "yes" ] || exit 0
+[ -x /usr/bin/kumo-gateway ]   || exit 1
+
+RETVAL=0
+prog="kumo-gateway"
+pid=/var/run/$prog.pid
+
+start(){
+    # Check config
+    if [ -z "$KUMO_GATEWAY_MANAGER_ADDR" ]; then
+        echo "kumo-manager address setting is empty."
+        exit 1
+    fi
+    if [ -z "$KUMO_GATEWAY_MANAGER_PORT" ]; then
+        echo "kumo-manager port setting is empty."
+        exit 1
+    fi
+
+    OPTIONS="-d $pid -m $KUMO_GATEWAY_MANAGER_ADDR:$KUMO_GATEWAY_MANAGER_PORT"
+    OPTIONS="$KUMO_GATEWAY_MEMPROTO_MODE $KUMO_GATEWAY_MEMPROTO_ADDR:$KUMO_GATEWAY_MEMPROTO_PORT $OPTIONS"
+    if [ -n "$KUMO_GATEWAY_OPTS" ]; then
+        OPTIONS="$OPTIONS $KUMO_GATEWAY_OPTS"
+    fi
+    echo -n $"Starting $prog: "
+    $prog $OPTIONS
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        touch /var/lock/subsys/$prog
+        echo_success
+    else
+        echo_failure
+    fi
+    echo
+    return $RETVAL
+}
+
+stop(){
+    echo -n $"Stopping $prog: "
+    killproc $prog
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ] ; then
+        rm -f /var/lock/subsys/$prog
+        rm -f /var/run/${prog}.pid
+    fi
+    echo
+    return $RETVAL
+}
+
+restart(){
+    stop
+    start
+}
+
+# See how we were called.
+case "$1" in
+    start)
+	start
+	;;
+    stop)
+	stop
+	;;
+    status)
+        status -p $pid $prog
+	;;
+    restart)
+	restart
+	;;
+    *)
+	echo $"Usage: $0 {start|stop|status|restart}"
+	RETVAL=1
+esac
+
+exit $RETVAL

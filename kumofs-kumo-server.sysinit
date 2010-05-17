@@ -1,0 +1,130 @@
+#!/bin/sh
+#
+# kumo-server  this node stores data
+#
+# Copyright (C) 2009-2010 FURUHASHI Sadayuki
+#
+# chkconfig: - 99 01
+# description: kumo-server this node stores data. \
+#              Run this daemon on least one hosts. \
+#              You can add kumo-servers after building the cluster.
+#
+# processname: /usr/sbin/kumo-server
+# config: /etc/sysconfig/kumo-server
+# pidfile: /var/run/kumo-server.pid
+
+PATH=/sbin:/bin:/usr/bin:/usr/sbin
+
+# Source function library.
+. /etc/init.d/functions
+
+# Get config.
+test -f /etc/sysconfig/network  && . /etc/sysconfig/network
+
+KUMO_SERVER_LOCAL_ADDR=localhost
+KUMO_SERVER_LOCAL_PORT=19800
+KUMO_SERVER_MANAGER_PORT_1=19700
+KUMO_SERVER_MANAGER_PORT_2=19700
+
+test -f /etc/sysconfig/kumo-server && . /etc/sysconfig/kumo-server
+[ -n "$KUMO_SERVER_LOCAL_ADDR" ] && KUMO_SERVER_LOCAL_ADDR=$KUMO_SERVER_LOCAL_ADDR
+[ -n "$KUMO_SERVER_LOCAL_PORT" ] && KUMO_SERVER_LOCAL_PORT=$KUMO_SERVER_LOCAL_PORT
+[ -n "$KUMO_SERVER_MANAGER_ADDR_1" ] && KUMO_SERVER_MANAGER_ADDR_1=$KUMO_SERVER_MANAGER_ADDR_1
+[ -n "$KUMO_SERVER_MANAGER_PORT_1" ] && KUMO_SERVER_MANAGER_PORT_1=$KUMO_SERVER_MANAGER_PORT_1
+[ -n "$KUMO_SERVER_MANAGER_ADDR_2" ] && KUMO_SERVER_MANAGER_ADDR_2=$KUMO_SERVER_MANAGER_ADDR_2
+[ -n "$KUMO_SERVER_MANAGER_PORT_2" ] && KUMO_SERVER_MANAGER_PORT_2=$KUMO_SERVER_MANAGER_PORT_2
+[ -n "$KUMO_SERVER_DATABASE" ] && KUMO_SERVER_DATABASE=$KUMO_SERVER_DATABASE
+[ -n "$KUMO_SERVER_OPTS" ] && KUMO_SERVER_OPTS=$KUMO_SERVER_OPTS
+
+# Check that networking is up.
+[ "${NETWORKING}" = "yes" ] || exit 0
+[ -x /usr/bin/kumo-server ]   || exit 1
+
+RETVAL=0
+prog="kumo-server"
+pid=/var/run/$prog.pid
+
+start(){
+    # Check config
+    if [ -z "$KUMO_SERVER_MANAGER_ADDR_1" ]; then
+        echo "kumo-manager address setting is empty."
+        exit 1
+    fi
+    if [ -z "$KUMO_SERVER_MANAGER_PORT_1" ]; then
+        echo "kumo-manager port setting is empty."
+        exit 1
+    fi
+    if [ -z "$KUMO_SERVER_DATABASE" ]; then
+        echo "kumo-server database setting is empty."
+        exit 1
+    fi
+
+    OPTIONS="-d $pid -l $KUMO_SERVER_LOCAL_ADDR:$KUMO_SERVER_LOCAL_PORT"
+    if [ -n "$KUMO_SERVER_MANAGER_ADDR_1" ]; then
+        OPTIONS="$OPTIONS -m $KUMO_SERVER_MANAGER_ADDR_1:$KUMO_SERVER_MANAGER_PORT_1"
+    fi
+    if [ -n "$KUMO_SERVER_MANAGER_ADDR_2" ]; then
+        OPTIONS="$OPTIONS -p $KUMO_SERVER_MANAGER_ADDR_2:$KUMO_SERVER_MANAGER_PORT_2"
+    fi
+    if [ -n "$KUMO_SERVER_DATABASE" ]; then
+        OPTIONS="$OPTIONS -s $KUMO_SERVER_DATABASE"
+    fi
+    if [ -n "$KUMO_SERVER_OPTS" ]; then
+        OPTIONS="$OPTIONS $KUMO_SERVER_OPTS"
+    fi
+    echo -n $"Starting $prog: "
+    $prog $OPTIONS
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        touch /var/lock/subsys/$prog
+        echo_success
+    else
+        echo_failure
+    fi
+    echo
+    return $RETVAL
+}
+
+stop(){
+    echo -n $"Stopping $prog: "
+    killproc $prog
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ] ; then
+        rm -f /var/lock/subsys/$prog
+        rm -f /var/run/${prog}.pid
+    fi
+    echo
+    return $RETVAL
+}
+
+restart(){
+    stop
+    start
+}
+
+# See how we were called.
+case "$1" in
+    start)
+	start
+	;;
+    stop)
+	stop
+	;;
+    status)
+        status -p $pid $prog
+	;;
+    allstatus)
+        for stat in pid uptime time version cmd_get cmd_set cmd_delete items rhs whs; do
+            echo $stat:
+            /usr/bin/kumostat $KUMO_SERVER_LOCAL_ADDR:$KUMO_SERVER_LOCAL_PORT $stat
+        done
+        ;;
+    restart)
+	restart
+	;;
+    *)
+	echo $"Usage: $0 {start|stop|status|allstatus|restart}"
+	RETVAL=1
+esac
+
+exit $RETVAL

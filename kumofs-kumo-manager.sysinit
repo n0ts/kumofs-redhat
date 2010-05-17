@@ -1,0 +1,104 @@
+#!/bin/sh
+#
+# kumo-manager  this node manages kumo-servers
+#
+# Copyright (C) 2009-2010 FURUHASHI Sadayuki
+#
+# chkconfig: - 99 01
+# description: kumo-manager this node manages kumo-servers. \
+#              Run this daemon on one or two hosts.
+#
+# processname: /usr/sbin/kumo-manager
+# config: /etc/sysconfig/kumo-manager
+# pidfile: /var/run/kumo-manager.pid
+
+PATH=/sbin:/bin:/usr/bin:/usr/sbin
+
+# Source function library.
+. /etc/init.d/functions
+
+# Get config.
+test -f /etc/sysconfig/network  && . /etc/sysconfig/network
+
+KUMO_MANAGER_LOCAL_ADDR=localhost
+KUMO_MANAGER_LOCAL_PORT=19700
+
+test -f /etc/sysconfig/kumo-manager && . /etc/sysconfig/kumo-manager
+[ -n "$KUMO_MANAGER_LOCAL_ADDR" ] && KUMO_MANAGER_LOCAL_ADDR=$KUMO_MANAGER_LOCAL_ADDR
+[ -n "$KUMO_MANAGER_LOCAL_PORT" ] && KUMO_MANAGER_LOCAL_PORT=$KUMO_MANAGER_LOCAL_PORT
+[ -n "$KUMO_MANAGER_PARTNER_ADDR" ] && KUMO_MANAGER_PARTNER_ADDR=$KUMO_MANAGER_PARTNER_ADDR
+[ -n "$KUMO_MANAGER_PARTNER_PORT" ] && KUMO_MANAGER_PARTNER_PORT=$KUMO_MANAGER_PARTNER_PORT
+[ -n "$KUMO_MANAGER_OPTS" ] && KUMO_MANAGER_OPTS=$KUMO_MANAGER_OPTS
+
+# Check that networking is up.
+[ "${NETWORKING}" = "yes" ] || exit 0
+[ -x /usr/bin/kumo-manager ]   || exit 1
+
+RETVAL=0
+prog="kumo-manager"
+pid=/var/run/$prog.pid
+
+start(){
+    OPTIONS="-d $pid -l $KUMO_MANAGER_LOCAL_ADDR:$KUMO_MANAGER_LOCAL_PORT"
+    if [ -n "$KUMO_MANAGER_PARTNER_ADDR" ]; then
+        OPTIONS="$OPTIONS -p $KUMO_MANAGER_PARTNER_ADDR:$KUMO_MANAGER_PARTNER_PORT"
+    fi
+    if [ -n "$KUMO_MANAGER_OPTS" ]; then
+        OPTIONS="$OPTIONS $KUMO_MANAGER_OPTS"
+    fi
+    echo -n $"Starting $prog: "
+    $prog $OPTIONS
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        touch /var/lock/subsys/$prog
+        echo_success
+    else
+        echo_failure
+    fi
+    echo
+    return $RETVAL
+}
+
+stop(){
+    echo -n $"Stopping $prog: "
+    killproc $prog
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ] ; then
+        rm -f /var/lock/subsys/$prog
+        rm -f /var/run/${prog}.pid
+    fi
+    echo
+    return $RETVAL
+}
+
+restart(){
+    stop
+    start
+}
+
+# See how we were called.
+case "$1" in
+    start)
+	start
+	;;
+    stop)
+	stop
+	;;
+    status)
+        status -p $pid $prog
+	;;
+    allstatus)
+        for stat in pid uptime time version cmd_get cmd_set cmd_delete items rhs whs; do
+            echo $stat:
+            /usr/bin/kumostat -m $KUMO_MANAGER_LOCAL_ADDR:$KUMO_MANAGER_LOCAL_PORT $stat
+        done
+        ;;
+    restart)
+	restart
+	;;
+    *)
+	echo $"Usage: $0 {start|stop|status|allstatus|restart}"
+	RETVAL=1
+esac
+
+exit $RETVAL
