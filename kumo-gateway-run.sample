@@ -1,0 +1,14 @@
+#!/bin/sh
+
+test -f /etc/sysconfig/kumo-gateway && . /etc/sysconfig/kumo-gateway
+
+OPTIONS="-m $KUMO_GATEWAY_MANAGER_ADDR:$KUMO_GATEWAY_MANAGER_PORT"
+OPTIONS="$KUMO_GATEWAY_MEMPROTO_MODE $KUMO_GATEWAY_MEMPROTO_ADDR:$KUMO_GATEWAY_MEMPROTO_PORT $OPTIONS"
+if [ -n "$KUMO_GATEWAY_OPTS" ]; then
+    OPTIONS="$OPTIONS $KUMO_GATEWAY_OPTS"
+fi
+
+exec 2>&1
+exec setuidgid $USER \
+     /usr/bin/kumo-gateway \
+         $OPTIONS -o \"-\"

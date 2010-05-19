@@ -1,0 +1,22 @@
+#!/bin/sh
+
+test -f /etc/sysconfig/kumo-server && . /etc/sysconfig/kumo-server
+
+OPTIONS="-l $KUMO_SERVER_LOCAL_ADDR:$KUMO_SERVER_LOCAL_PORT"
+if [ -n "$KUMO_SERVER_MANAGER_ADDR_1" ]; then
+    OPTIONS="$OPTIONS -m $KUMO_SERVER_MANAGER_ADDR_1:$KUMO_SERVER_MANAGER_PORT_1"
+fi
+if [ -n "$KUMO_SERVER_MANAGER_ADDR_2" ]; then
+    OPTIONS="$OPTIONS -p $KUMO_SERVER_MANAGER_ADDR_2:$KUMO_SERVER_MANAGER_PORT_2"
+fi
+if [ -n "$KUMO_SERVER_DATABASE" ]; then
+    OPTIONS="$OPTIONS -s $KUMO_SERVER_DATABASE"
+fi
+if [ -n "$KUMO_SERVER_OPTS" ]; then
+    OPTIONS="$OPTIONS $KUMO_SERVER_OPTS"
+fi
+
+exec 2>&1
+exec setuidgid $USER \
+     /usr/bin/kumo-server \
+         $OPTIONS -o \"-\"

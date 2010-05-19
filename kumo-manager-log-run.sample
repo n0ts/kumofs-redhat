@@ -1,0 +1,5 @@
+#!/bin/sh
+
+exec setuidgid $USER \
+     multilog t \
+         /tmp/kumo-manager.log
