@@ -1,6 +1,6 @@
 Summary:	A scalable and highly available distributed key-value store
 Name:		kumofs
-Version:	0.4.2
+Version:	0.4.7
 Release:	1%{?dist}
 Group:		Development/Libraries
 License:	Apache License
