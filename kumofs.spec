@@ -1,6 +1,6 @@
 Summary:	A scalable and highly available distributed key-value store
 Name:		kumofs
-Version:	0.4.7
+Version:	0.4.12
 Release:	1%{?dist}
 Group:		Development/Libraries
 License:	Apache License
@@ -18,9 +18,10 @@ Source32:	kumofs-kumo-gateway.logrotate
 Requires:	tokyocabinet >= 1.4.10
 Requires:	msgpack >= 0.3.1
 BuildRequires:	gcc >= 4.1
-BuildRequires:	ruby >= 1.8.6
+#BuildRequires:	ruby >= 1.8.6
 BuildRequires:	tokyocabinet-devel >= 1.4.10
 BuildRequires:	msgpack-devel >= 0.3.1
+BuildRequires:  rubygems
 BuildRequires:	openssl
 BuildRequires:	zlib
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-buildroot
@@ -161,8 +162,11 @@ fi
 %config(noreplace) %{_sysconfdir}/sysconfig/kumo-gateway
 
 %changelog
+* Wed Sep 22 2010 Naoya Nakazawa <naoya.n@gmail.com> - 1.4.12-1
+- Updated to 1.4.12
+
 * Sat May 15 2010 Naoya Nakazawa <naoya.n@gmail.com> - 1.4.5-1
-- Updated to version 1.4.5
+- Updated to 1.4.5
 
 * Tue Jan 19 2010 Naoya Nakazawa <naoya.n@gmail.com> - 0.3.0-1
 - Initial Version
